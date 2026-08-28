@@ -1,5 +1,6 @@
 import os
 import shutil
+from datetime import datetime
 
 CATEGORIES = {
     "Images": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"],
@@ -9,8 +10,10 @@ CATEGORIES = {
     "Archives": [".zip", ".tar", ".gz", ".7z", ".rar"]
 }
 
+LOG_FILE_NAME = "organizer_log.txt"
+
 print("============================================")
-print("             FILE ORGANIZER v2.0            ")
+print("             FILE ORGANIZER v3.0            ")
 print("============================================\n")
 
 path = input("Enter folder path:\n> ").strip()
@@ -24,34 +27,50 @@ else:
     moved_count = 0
     skipped_dir_count = 0
 
-    for item in os.listdir(path):
-        full_path = os.path.join(path, item)
+    log_file_path = os.path.join(path, LOG_FILE_NAME)
 
-        # Skip subdirectories so we don't move existing folders
-        if os.path.isdir(full_path):
-            skipped_dir_count += 1
-            continue
+    # Open log file in append mode ("a") using a context manager
+    with open(log_file_path, "a", encoding="utf-8") as log_file:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_file.write(f"\n--- Execution Run: {timestamp} ---\n")
 
-        # Extract file extension and normalize to lowercase
-        _, ext = os.path.splitext(item)
-        ext = ext.lower()
+        for item in os.listdir(path):
+            # Skip the log file itself so it isn't moved into "Others/"
+            if item == LOG_FILE_NAME:
+                continue
 
-        # Find matching category folder
-        target_category = "Others"
-        for category, extensions in CATEGORIES.items():
-            if ext in extensions:
-                target_category = category
-                break
+            full_path = os.path.join(path, item)
 
-        # Create destination directory if it doesn't exist
-        dest_dir = os.path.join(path, target_category)
-        os.makedirs(dest_dir, exist_ok=True)
+            # Skip subdirectories
+            if os.path.isdir(full_path):
+                skipped_dir_count += 1
+                continue
 
-        # Move file to destination folder
-        dest_path = os.path.join(dest_dir, item)
-        shutil.move(full_path, dest_path)
+            # Extract extension and normalize
+            _, ext = os.path.splitext(item)
+            ext = ext.lower()
 
-        print(f"[MOVED] {item} -> {target_category}/")
-        moved_count += 1
+            # Identify target folder category
+            target_category = "Others"
+            for category, extensions in CATEGORIES.items():
+                if ext in extensions:
+                    target_category = category
+                    break
 
-    print(f"\nSummary: {moved_count} Files Moved, {skipped_dir_count} Subdirectories Skipped")
+            # Create target folder if missing
+            dest_dir = os.path.join(path, target_category)
+            os.makedirs(dest_dir, exist_ok=True)
+
+            # Move file
+            dest_path = os.path.join(dest_dir, item)
+            shutil.move(full_path, dest_path)
+
+            # Terminal output and file logging
+            log_entry = f"[MOVED] {item} -> {target_category}/"
+            print(log_entry)
+            log_file.write(log_entry + "\n")
+            moved_count += 1
+
+        summary_line = f"Summary: {moved_count} Files Moved, {skipped_dir_count} Subdirectories Skipped\n"
+        print(f"\n{summary_line.strip()}")
+        log_file.write(summary_line)
